@@ -1,0 +1,9 @@
+{
+  "name": "razorpay-ai-commerce",
+  "private": true,
+  "scripts": {
+    "server": "npm --prefix server run dev",
+    "seed": "npm --prefix server run seed",
+    "client": "npm --prefix client run dev"
+  }
+}

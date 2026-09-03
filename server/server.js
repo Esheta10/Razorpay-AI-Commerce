@@ -9,8 +9,20 @@ import paymentRoutes from './routes/payments.js';
 
 const app = express();
 const port = process.env.PORT || 8080;
+const allowedOrigins = [process.env.CLIENT_ORIGIN].filter(Boolean);
+const localDevOriginPattern = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin) || localDevOriginPattern.test(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS blocked origin: ${origin}`));
+    }
+  })
+);
 app.use(express.json());
 app.use(morgan('dev'));
 

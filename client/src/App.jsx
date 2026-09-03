@@ -17,8 +17,9 @@ export default function App() {
     try {
       setError('');
       setSummary(await fetchMerchantSummary(id));
-    } catch {
-      setError('Unable to load merchant summary. Seed the backend and paste the merchant id.');
+    } catch (requestError) {
+      const responseMessage = requestError.response?.data?.error;
+      setError(responseMessage || requestError.message || 'Unable to reach the backend.');
     }
   }
 

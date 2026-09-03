@@ -10,6 +10,9 @@ router.get('/summary/:merchantId', async (req, res, next) => {
   try {
     const { merchantId } = req.params;
     const merchant = await Merchant.findById(merchantId).lean();
+    if (!merchant) {
+      return res.status(404).json({ error: 'Merchant not found', merchantId });
+    }
     const products = await Product.find({ merchantId }).lean();
     const transactions = await Transaction.find({ merchantId }).sort({ createdAt: -1 }).limit(20).lean();
     const auditLogs = await AuditLog.find({ merchantId }).sort({ createdAt: -1 }).limit(40).lean();
