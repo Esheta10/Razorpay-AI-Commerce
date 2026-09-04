@@ -1,4 +1,4 @@
-# Razorpay AI Growth & Agentic Commerce
+# Razorpay AI Growth & Agentic Commerce - Autonomous Agent Commerce & Connection Recovery Engine
 
 A full-stack agentic commerce and connection recovery engine designed to bridge the gap between autonomous AI shopping agents and online merchants. 
 <img width="1293" height="586" alt="image" src="https://github.com/user-attachments/assets/40b31e1f-6e18-4abd-91fa-3ac9d9b5c5cc" />
