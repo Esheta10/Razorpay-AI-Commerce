@@ -6,6 +6,7 @@ export const api = axios.create({
   baseURL: `${backendUrl}/api`
 });
 
+
 export async function fetchMerchantSummary(merchantId) {
   const { data } = await api.get(`/merchant/summary/${encodeURIComponent(merchantId.trim())}`);
   if (!data.merchant) {
