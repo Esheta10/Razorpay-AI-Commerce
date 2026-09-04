@@ -5,6 +5,7 @@ import Merchant from '../models/Merchant.js';
 import Product from '../models/Product.js';
 import { evaluateMoneyAction } from '../services/guardrailService.js';
 import { createRazorpayTestOrder, verifyRazorpayPaymentSignature } from '../utils/razorpayMock.js';
+import { createAp2Mandates } from '../utils/ap2.js';
 import { logAudit } from '../utils/audit.js';
 
 const router = Router();
@@ -41,6 +42,7 @@ router.post('/orders', async (req, res, next) => {
       paymentAttemptCount: 1,
       gateDecision
     });
+    const ap2 = createAp2Mandates({ merchant, transactionId: transaction._id.toString(), cart, amount, currency });
     const order = await createRazorpayTestOrder({
       amount,
       currency,
@@ -57,13 +59,14 @@ router.post('/orders', async (req, res, next) => {
       boundedBy: gateDecision.boundedBy,
       explanation: 'A Razorpay test-mode order was created only after the server validated the exact catalog cart and guardrails.',
       input: { amount, currency, cart, paymentMethod, humanApprovalGranted },
-      output: { orderId: order.id }
+      output: { orderId: order.id, ap2: { version: ap2.version, checkoutHash: ap2.checkout_mandate.checkout_hash } }
     });
 
     res.status(201).json({
       keyId: process.env.RAZORPAY_KEY_ID,
       order,
-      transactionId: transaction._id
+      transactionId: transaction._id,
+      ap2
     });
   } catch (error) {
     next(error);

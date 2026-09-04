@@ -1,7 +1,10 @@
 import 'dotenv/config';
+import dns from 'node:dns';
 import mongoose from 'mongoose';
 import Merchant from './models/Merchant.js';
 import Product from './models/Product.js';
+
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/razorpay_ai_commerce');
 await Merchant.deleteMany({});

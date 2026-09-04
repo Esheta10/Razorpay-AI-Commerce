@@ -11,6 +11,7 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedCartItem
   const [showProtocol, setShowProtocol] = useState(false);
   const [paymentState, setPaymentState] = useState('idle');
   const [paymentError, setPaymentError] = useState('');
+  const [ap2Data, setAp2Data] = useState(null);
 
   const cart = useMemo(() => {
     const selectedProducts = selectedCartItems.length > 0
@@ -79,7 +80,7 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedCartItem
       });
       if (!scriptLoaded) throw new Error('Razorpay Checkout SDK could not be loaded.');
 
-      const { keyId, order, transactionId } = await createPaymentOrder({
+      const { keyId, order, transactionId, ap2 } = await createPaymentOrder({
         merchantId,
         buyerAgentId: 'buyer-agent-demo-001',
         amount: strongTotal,
@@ -87,6 +88,7 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedCartItem
         items: cart.items.map((item) => ({ productId: item.productId, quantity: item.qty })),
         humanApprovalGranted: hitlApproved
       });
+      setAp2Data(ap2);
 
       const checkout = new window.Razorpay({
         key: keyId,
@@ -150,8 +152,8 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedCartItem
                     <p className="text-sm text-slate-400">{item.sku} • Qty {item.qty}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-slate-400">₹{(item.unitPrice / 100).toLocaleString('en-IN')}</p>
-                    <p className="font-bold text-white">₹{(item.unitPrice / 100).toLocaleString('en-IN')}</p>
+                    <p className="text-sm text-slate-400">₹{(item.unitPrice / 100).toLocaleString('en-IN')} each</p>
+                    <p className="font-bold text-white">₹{((item.unitPrice * item.qty) / 100).toLocaleString('en-IN')}</p>
                   </div>
                 </div>
               ))}
@@ -198,7 +200,7 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedCartItem
 
             {hitlPending && (
               <div className="mt-4 rounded-xl border border-[#f7c96e]/35 bg-[#2a2313] p-4">
-                <p className="font-semibold text-[#f7d98f]">Agent requested ₹2,500 (Exceeds ₹2,000 cap). Approve or Reject?</p>
+                <p className="font-semibold text-[#f7d98f]">Agent requested ₹{paymentAmount} (Exceeds ₹2,000 cap). Approve or Reject?</p>
                 <div className="mt-3 flex flex-wrap gap-3">
                   <button
                     onClick={() => { setHitlApproved(true); setHitlRejected(false); }}
@@ -347,7 +349,7 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedCartItem
                   <span className="rounded-full bg-[#1b2943] px-2 py-1 text-[#badaff]">AP2 / UAP</span>
                   <span className="rounded-full bg-[#1b2943] px-2 py-1 text-[#badaff]">Live Payload</span>
                 </div>
-                <pre className="max-h-72 overflow-auto whitespace-pre-wrap text-[11px] leading-5 text-slate-200">{JSON.stringify(agentPayload, null, 2)}</pre>
+                <pre className="max-h-72 overflow-auto whitespace-pre-wrap text-[11px] leading-5 text-slate-200">{JSON.stringify(ap2Data || agentPayload, null, 2)}</pre>
               </div>
             )}
           </div>

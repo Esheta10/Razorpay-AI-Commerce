@@ -1,3 +1,4 @@
+import dns from 'node:dns';
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -6,6 +7,8 @@ import mongoose from 'mongoose';
 import agentRoutes from './routes/agent.js';
 import merchantRoutes from './routes/merchant.js';
 import paymentRoutes from './routes/payments.js';
+
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app = express();
 const port = process.env.PORT || 8080;
