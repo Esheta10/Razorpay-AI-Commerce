@@ -12,7 +12,12 @@ dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app = express();
 const port = process.env.PORT || 8080;
-const allowedOrigins = [process.env.CLIENT_ORIGIN || "http://localhost:5173"].filter(Boolean);
+const allowedOrigins = [
+  process.env.CLIENT_ORIGIN, 
+  "https://razorpay-ai-commerce.vercel.app",
+  "http://localhost:5173"
+].filter(Boolean);
+
 const localDevOriginPattern = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
 
 app.use(
