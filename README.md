@@ -1,78 +1,52 @@
 # Razorpay AI Growth & Agentic Commerce
 
-This project helps a merchant become easy for AI shopping agents to discover and buy from.
+A full-stack agentic commerce and connection recovery engine designed to bridge the gap between autonomous AI shopping agents and online merchants. 
+<img width="1293" height="586" alt="image" src="https://github.com/user-attachments/assets/40b31e1f-6e18-4abd-91fa-3ac9d9b5c5cc" />
+<img width="1271" height="576" alt="image" src="https://github.com/user-attachments/assets/81c09347-5562-4986-82b5-340d46880771" />
+<img width="1243" height="581" alt="image" src="https://github.com/user-attachments/assets/f04a09de-f879-42f2-8b9f-a6b17db02e02" />
 
-It combines:
+---
 
-- A conversational shopping assistant
-- An agent-readable product catalog
-- Product recommendations and cross-sells
-- Razorpay test-mode checkout
-- Spending limits and human approval
-- A visible audit trail for money actions
-- A Protocol Inspector showing AP2-style agent payment data
+## Architecture & Core Capabilities
 
-## How It Works
+* **Conversational Shopping Assistant**: Powered by the Gemini API to let users or buyer agents discover products, manage quantities, and receive smart recommendations in real time.
+* **Agent-Readable Catalog**: Structured merchant catalogs that allow AI systems to parse products, descriptions, and SKUs seamlessly.
+* **Server-Side Guardrails & Safety Gates**: Enforces strict validation by calculating cart totals directly on the backend, checking merchant spending limits, and triggering mandatory **Human-in-the-Loop (HITL)** approval workflows for high-value orders.
+* **Secure Razorpay Test-Mode Integration**: Executes verifiable checkouts with strict payment and webhook signature verification.
+* **Protocol Inspector**: A judge-friendly debugging view displaying AP2-style payment mandates, agent identities, and server-generated ES256 signatures.
+* **Transparent Audit Trail**: A complete, event-driven log recording every money action, guardrail evaluation, and failure recovery attempt.
 
-1. The merchant enters their Merchant ID.
-2. The AI assistant reads the active product catalog.
-3. A buyer can ask for products, quantities, or recommendations.
-4. The buyer adds products to a shared checkout cart.
-5. The server checks the products, quantities, payment method, and total amount.
-6. Higher-value orders pause for human approval.
-7. Approved orders open Razorpay Checkout in test mode.
-8. The payment result is verified by the server and recorded in the Audit Trail.
+---
 
-## What Makes It Safe
+## System Flow & How It Works
 
-- The server calculates the cart total from the merchant catalog.
-- The browser cannot change product prices or create an invalid amount.
-- Merchant spending limits are checked before a Razorpay order is created.
-- Orders above the configured limit require human approval.
-- Payment signatures are verified on the server.
-- Razorpay webhook signatures are checked before transaction updates.
-- Failed payment scenarios show a visible recovery path.
+1. **Initialization**: The merchant enters their unique `Merchant_ID` to load the active catalog and configuration rules.
+2. **Discovery & Cart Building**: Buyers interact with the conversational assistant to query products and add items to a shared checkout cart.
+3. **Guardrail Evaluation**: The server independently verifies product prices, quantities, and totals against pre-set spending limits.
+4. **Approval & Settlement**: Orders exceeding spending caps are locked pending human review. Once approved, the transaction proceeds to secure Razorpay test-mode execution and is logged in the audit trail.
 
-## Protocol Inspector
+---
 
-The Protocol Inspector is a judge-friendly view of the data exchanged between an AI buyer and the merchant.
+## Project Structure
 
-It shows AP2-style payment information such as:
+* `client`: Dashboard interface, conversational chatbot, catalog view, payment review screen, and audit display.
+* `server/routes`: Merchant, agent, and payment processing endpoints.
+* `server/services`: Core logic for catalog handling, guardrails, Gemini assistant integration, and checkout management.
+* `server/models`: MongoDB schemas for merchants, products, transactions, and audit logs.
+* `server/utils/ap2.js`: Local signed AP2 payment mandate demonstration implementation.
 
-- Agent and merchant identity
-- Products and quantities
-- Amount and currency
-- Spending limits
-- Human approval status
-- Checkout and payment mandate data
-- Server-generated ES256 signature information
+---
 
-This is a local AP2 demonstration. Full ecosystem integration would additionally require an official trusted agent, credential provider, and payment network connection.
+## Local Setup & Installation
 
-## Run Locally
+### Prerequisites
+* **Node.js**: Version 18 or newer
+* **Database**: MongoDB or MongoDB Atlas
+* **Gateways & APIs**: Razorpay test-mode credentials and a Google Gemini API key
 
-Prerequisites:
+### 1. Server Configuration
+Create a `.env` file inside the `server/` directory with the following variables:
 
-- Node.js 18 or newer
-- MongoDB or a MongoDB Atlas database
-- Razorpay test-mode credentials
-- Gemini API key for the conversational assistant
-
-### 1. Configure the server
-
-Create `server/.env` with these variables:
-
-```env
-PORT=8080
-MONGODB_URI=your_mongodb_connection_string
-CLIENT_ORIGIN=http://localhost:5173
-GEMINI_API_KEY=your_gemini_api_key
-RAZORPAY_KEY_ID=your_razorpay_test_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_test_secret
-RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
-```
-
-Never commit this file or share its values.
 
 ### 2. Start the server
 
@@ -96,6 +70,8 @@ npm run dev
 ```
 
 Open the localhost URL shown by Vite. Enter the printed Merchant ID and click **Simulate Agent**.
+
+###Merchant ID:  6a9acf5dfc801b18bccdb55d
 
 ## Try The Demo
 
@@ -121,6 +97,3 @@ To demonstrate recovery, click **Trigger Graceful Failure Test**.
 - `server/models`: merchant, product, transaction, and audit records
 - `server/utils/ap2.js`: local signed AP2 mandate demonstration
 
-## Important Note
-
-Razorpay and AP2 are configured for test/demo use in this project. Before production use, add authenticated merchant users, server-issued human approval tokens, persistent signing keys, rate limiting, monitoring, and a managed secrets solution.
