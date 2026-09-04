@@ -5,16 +5,15 @@ import { chatWithCatalogAssistant, runAgentCheckout } from '../../services/api.j
 
 export function ChatCheckout({ merchantId, products, onProductSelected, onSelectionReset, onComplete }) {
   const [message, setMessage] = useState('Buy the serum and add a sensible companion product.');
-  const [failureMode, setFailureMode] = useState('none');
   const [conversation, setConversation] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [suggestedProductId, setSuggestedProductId] = useState(null);
+  const [suggestedProduct, setSuggestedProduct] = useState(null);
   const [chatError, setChatError] = useState('');
 
   async function submitCheckout() {
     setLoading(true);
     setChatError('');
-    const selected = products.find((product) => product._id === suggestedProductId) || products[0];
+    const selected = products.find((product) => product._id === suggestedProduct?.productId) || products[0];
     const buyerMessage = { role: 'buyer_agent', text: message };
     setConversation((items) => [...items, buyerMessage]);
 
@@ -24,9 +23,8 @@ export function ChatCheckout({ merchantId, products, onProductSelected, onSelect
         buyerAgentId: 'buyer-agent-demo-001',
         message,
         requestedProductId: selected?._id,
-        quantity: 1,
-        paymentMethod: 'upi',
-        failureMode
+        quantity: suggestedProduct?.quantity || 1,
+        paymentMethod: 'upi'
       });
       setConversation((items) => [...items, { role: 'merchant_agent', text: result.reply }]);
       await onComplete();
@@ -44,7 +42,7 @@ export function ChatCheckout({ merchantId, products, onProductSelected, onSelect
     setConversation(nextHistory);
     try {
       const result = await chatWithCatalogAssistant({ merchantId, message: message.trim(), history: conversation });
-      setSuggestedProductId(result.productId);
+      setSuggestedProduct(result.productId ? { productId: result.productId, quantity: result.quantity || 1 } : null);
       setConversation((items) => [...items, { role: 'assistant', text: result.reply }]);
       setMessage('');
     } catch (error) {
@@ -55,10 +53,11 @@ export function ChatCheckout({ merchantId, products, onProductSelected, onSelect
   }
 
   function addSuggestedProduct() {
-    const product = products.find((item) => item._id === suggestedProductId);
+    const product = products.find((item) => item._id === suggestedProduct?.productId);
     if (!product) return;
-    onProductSelected(product._id);
-    setMessage(`Add ${product.name} to my checkout.`);
+    const quantity = suggestedProduct.quantity || 1;
+    onProductSelected({ productId: product._id, quantity });
+    setMessage(`Add ${quantity} ${product.name} to my checkout.`);
   }
 
   return (
@@ -72,7 +71,7 @@ export function ChatCheckout({ merchantId, products, onProductSelected, onSelect
 
         <div className="flex items-center gap-3 text-[11px] font-black text-[#20e7a8]">
           <span className="tracking-[0.14em] text-slate-400">RZP Testnet v2.4</span>
-          <Button variant="secondary" className="h-8 rounded-lg px-3 text-[11px]" onClick={() => { setConversation([]); setSuggestedProductId(null); setChatError(''); onSelectionReset(); }}>
+          <Button variant="secondary" className="h-8 rounded-lg px-3 text-[11px]" onClick={() => { setConversation([]); setSuggestedProduct(null); setChatError(''); onSelectionReset(); }}>
             <RotateCcw className="h-3.5 w-3.5" />
             Reset
           </Button>
@@ -107,7 +106,7 @@ export function ChatCheckout({ merchantId, products, onProductSelected, onSelect
             ))}
           </div>
         )}
-        {suggestedProductId && (
+        {suggestedProduct && (
           <Button variant="secondary" className="mt-3" onClick={addSuggestedProduct}>
             <Plus className="h-4 w-4" />
             Add recommended product
@@ -127,22 +126,13 @@ export function ChatCheckout({ merchantId, products, onProductSelected, onSelect
 
       {chatError && <p className="mb-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{chatError}</p>}
 
-      <div className="grid gap-3 md:grid-cols-[1fr_180px_auto_auto]">
+      <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
         <input
           className="h-11 rounded-xl border border-white/10 bg-[#0f1729] px-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-[#77a7ff]/40"
           value={message}
           onChange={(event) => setMessage(event.target.value)}
           onKeyDown={(event) => { if (event.key === 'Enter') sendMessage(); }}
         />
-        <select
-          className="h-11 rounded-xl border border-white/10 bg-[#0f1729] px-3 text-sm text-slate-100 outline-none focus:border-[#77a7ff]/40"
-          value={failureMode}
-          onChange={(event) => setFailureMode(event.target.value)}
-        >
-          <option value="none">Normal payment</option>
-          <option value="timeout">Gateway timeout</option>
-          <option value="decline">Card decline</option>
-        </select>
         <Button onClick={sendMessage} disabled={loading || products.length === 0} className="h-11 rounded-xl px-4">
           {loading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           Chat

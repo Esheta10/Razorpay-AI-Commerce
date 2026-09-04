@@ -1,34 +1,65 @@
-import { AlertTriangle, CheckCircle2, CircleDollarSign, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, CircleDollarSign, Code2, ShieldCheck, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { createPaymentOrder, verifyPayment } from '../../services/api.js';
 
-export function PaymentPageBuilder({ merchantId, products = [], selectedProductIds = [] }) {
+export function PaymentPageBuilder({ merchantId, products = [], selectedCartItems = [], onComplete }) {
   const [forceHighValue, setForceHighValue] = useState(false);
   const [showFailure, setShowFailure] = useState(false);
+  const [failureState, setFailureState] = useState('idle');
   const [hitlApproved, setHitlApproved] = useState(false);
   const [hitlRejected, setHitlRejected] = useState(false);
+  const [showProtocol, setShowProtocol] = useState(false);
   const [paymentState, setPaymentState] = useState('idle');
   const [paymentError, setPaymentError] = useState('');
 
   const cart = useMemo(() => {
-    const selectedProducts = products.filter((product) => selectedProductIds.includes(product._id));
-    const cartProducts = selectedProducts.length > 0 ? selectedProducts : products.slice(0, 2);
-    const items = cartProducts.map((product) => ({
+    const selectedProducts = selectedCartItems.length > 0
+      ? selectedCartItems.map((selectedItem) => ({
+        product: products.find((product) => product._id === selectedItem.productId),
+        quantity: selectedItem.quantity
+      })).filter((item) => item.product)
+      : products.slice(0, 2).map((product) => ({ product, quantity: 1 }));
+    const items = selectedProducts.map(({ product, quantity }) => ({
+      productId: product._id,
       sku: product.sku || product._id,
       name: product.name,
-      qty: 1,
+      qty: quantity,
       unitPrice: product.price
     }));
 
-    const totalAmount = items.reduce((sum, item) => sum + item.unitPrice, 0);
+    const totalAmount = items.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
     return { items, totalAmount };
-  }, [products, selectedProductIds]);
+  }, [products, selectedCartItems]);
 
   const strongTotal = forceHighValue ? 250000 : cart.totalAmount;
   const hitlRequired = strongTotal > 200000;
   const hitlPending = hitlRequired && !hitlApproved && !hitlRejected;
+  const hitlState = hitlPending ? 'PENDING_APPROVAL' : hitlRejected ? 'REJECTED' : hitlRequired ? 'APPROVED' : 'NOT_REQUIRED';
   const humanGateLabel = hitlPending ? 'PENDING APPROVAL' : hitlRejected ? 'REJECTED' : hitlRequired ? 'APPROVED' : 'Not required';
   const paymentAmount = (strongTotal / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const agentPayload = {
+    protocol: 'AP2',
+    protocol_version: '1.0',
+    message_type: 'payment.authorization_request',
+    transaction_id: 'tx_ai_98ds7f89ds',
+    merchant_id: merchantId,
+    agent: {
+      agent_id: 'buyer-agent-demo-001',
+      principal_id: 'usr_99812739',
+      authorization_scope: 'bounded_spend'
+    },
+    order: {
+      items: cart.items.map((item) => ({ sku: item.sku, name: item.name, quantity: item.qty, unit_price: item.unitPrice / 100 })),
+      amount: Number((strongTotal / 100).toFixed(2)),
+      currency: 'INR'
+    },
+    guardrails: {
+      spend_cap: 2000,
+      human_approval_threshold: 2000,
+      hitl_status: hitlState,
+      allowed_payment_methods: ['UPI', 'CARD']
+    }
+  };
 
   async function openRazorpayCheckout() {
     setPaymentError('');
@@ -52,7 +83,9 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
         merchantId,
         buyerAgentId: 'buyer-agent-demo-001',
         amount: strongTotal,
-        currency: 'INR'
+        currency: 'INR',
+        items: cart.items.map((item) => ({ productId: item.productId, quantity: item.qty })),
+        humanApprovalGranted: hitlApproved
       });
 
       const checkout = new window.Razorpay({
@@ -67,6 +100,7 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
           try {
             await verifyPayment({ transactionId, ...response });
             setPaymentState('paid');
+            await onComplete?.();
           } catch (error) {
             setPaymentError(error.response?.data?.message || error.message || 'Payment verification failed.');
             setPaymentState('error');
@@ -211,10 +245,6 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
           <div className="rounded-2xl border border-white/10 bg-[#101827] p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h3 className="text-lg font-bold text-white">C. Execution & Payment Method</h3>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[#2a2b19] px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#f5d57a]">
-                <Sparkles className="h-3.5 w-3.5" />
-                Test Mode
-              </span>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -229,18 +259,32 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
             </div>
 
             <div className="mt-4 flex flex-wrap gap-3">
-              <button className="inline-flex items-center gap-2 rounded-xl border border-[#77a7ff]/30 bg-[#1b2943] px-4 py-3 text-sm font-bold text-[#badaff]">
+              <button
+                onClick={openRazorpayCheckout}
+                disabled={forceHighValue || hitlPending || hitlRejected || paymentState === 'creating' || paymentState === 'verifying'}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#77a7ff]/30 bg-[#1b2943] px-4 py-3 text-sm font-bold text-[#badaff] disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 <ShieldCheck className="h-4 w-4" />
-                Authorize & Pay via Agent
+                {paymentState === 'creating' || paymentState === 'verifying' ? 'Processing...' : 'Authorize & Pay via Agent'}
               </button>
               <button
-                onClick={() => setShowFailure(true)}
+                onClick={() => { setFailureState('failed'); setShowFailure(true); }}
                 className="inline-flex items-center gap-2 rounded-xl border border-[#f7d8b6]/30 bg-[#2f2314] px-4 py-3 text-sm font-bold text-[#f6c98b]"
               >
                 <AlertTriangle className="h-4 w-4" />
                 Trigger Graceful Failure Test
               </button>
             </div>
+            {failureState === 'failed' && (
+              <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                Error 422: Autonomous Token Expired. Payment progression paused safely.
+              </p>
+            )}
+            {failureState === 'recovered' && (
+              <p className="mt-3 rounded-lg border border-[#20e7a8]/30 bg-[#103125] px-3 py-2 text-sm text-[#9afad3]">
+                Auto-Recovery: Delegation token refreshed and retry is ready. Zero revenue leakage.
+              </p>
+            )}
           </div>
         </div>
 
@@ -274,16 +318,39 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
               Pay ₹{paymentAmount}
             </div>
             <button
-              disabled={hitlPending || hitlRejected}
+                disabled={forceHighValue || hitlPending || hitlRejected}
               onClick={openRazorpayCheckout}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#b7adff] to-[#8da2ff] px-5 py-3 text-sm font-bold text-[#080d17] shadow-[0_8px_22px_rgba(146,164,255,0.35)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Zap className="h-4 w-4" />
-              {paymentState === 'creating' ? 'Preparing...' : paymentState === 'verifying' ? 'Verifying...' : paymentState === 'paid' ? 'Paid' : 'Pay Now'}
+              {forceHighValue ? 'Return to Normal Spend' : paymentState === 'creating' ? 'Preparing...' : paymentState === 'verifying' ? 'Verifying...' : paymentState === 'paid' ? 'Paid' : 'Pay Now'}
             </button>
           </div>
           {paymentError && <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{paymentError}</p>}
           {paymentState === 'paid' && <p className="mt-3 rounded-lg border border-[#20e7a8]/30 bg-[#103125] px-3 py-2 text-sm text-[#9afad3]">Payment verified successfully in Razorpay test mode.</p>}
+
+          <div className="mt-6 rounded-xl border border-white/10 bg-[#101827] p-3">
+            <button
+              onClick={() => setShowProtocol((current) => !current)}
+              className="flex w-full items-center justify-between gap-3 text-left"
+              aria-expanded={showProtocol}
+            >
+              <span className="inline-flex items-center gap-2 text-sm font-bold text-white">
+                <Code2 className="h-4 w-4 text-[#77a7ff]" />
+                Protocol Inspector
+              </span>
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${showProtocol ? 'rotate-180' : ''}`} />
+            </button>
+            {showProtocol && (
+              <div className="mt-3 rounded-lg border border-[#77a7ff]/20 bg-[#0c1424] p-3">
+                <div className="mb-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]">
+                  <span className="rounded-full bg-[#1b2943] px-2 py-1 text-[#badaff]">AP2 / UAP</span>
+                  <span className="rounded-full bg-[#1b2943] px-2 py-1 text-[#badaff]">Live Payload</span>
+                </div>
+                <pre className="max-h-72 overflow-auto whitespace-pre-wrap text-[11px] leading-5 text-slate-200">{JSON.stringify(agentPayload, null, 2)}</pre>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -300,23 +367,25 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
                   <h3 className="text-xl font-bold text-white">Error 422: Delegation Token Expired</h3>
                 </div>
               </div>
-              <button onClick={() => setShowFailure(false)} className="text-lg text-slate-400">×</button>
+              <button onClick={() => { setShowFailure(false); setFailureState('idle'); }} className="text-lg text-slate-400">×</button>
             </div>
 
             <div className="rounded-xl border border-[#f7d8b6]/30 bg-[#2a1d12] p-4 text-[#f6c98b]">
-              The AI buyer attempted payment with a stale delegation token. The agent safely stopped the transaction before any money moved.
+              {failureState === 'failed'
+                ? 'Error 422: Autonomous Token Expired. The AI buyer was stopped before any money moved.'
+                : '[Auto-Recovery: Fresh delegation token issued and checkout is ready to retry.]'}
             </div>
 
             <div className="mt-5 flex flex-wrap gap-3">
               <button
-                onClick={() => { setShowFailure(false); setHitlApproved(true); }}
+                onClick={() => { setFailureState('recovered'); setShowFailure(false); setHitlApproved(true); }}
                 className="inline-flex items-center gap-2 rounded-xl border border-[#20e7a8]/30 bg-[#103125] px-4 py-3 text-sm font-bold text-[#9afad3]"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Agent Auto-Retried with Fresh Token
               </button>
               <button
-                onClick={() => setShowFailure(false)}
+                onClick={() => { setFailureState('recovered'); setShowFailure(false); }}
                 className="inline-flex items-center gap-2 rounded-xl border border-[#7aa7ff]/30 bg-[#1b2943] px-4 py-3 text-sm font-bold text-[#dfeeff]"
               >
                 <ShieldCheck className="h-4 w-4" />

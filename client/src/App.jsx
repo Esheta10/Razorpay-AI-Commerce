@@ -1,6 +1,7 @@
 import { Copy, KeyRound, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from './components/Button.jsx';
+import { AuditTrailViewer } from './components/AuditTrailViewer.jsx';
 import { ChatCheckout } from './features/chat-checkout/ChatCheckout.jsx';
 import { CatalogManager } from './features/catalog/CatalogManager.jsx';
 import { MerchantDashboard } from './features/dashboard/MerchantDashboard.jsx';
@@ -13,7 +14,7 @@ export default function App() {
   const [merchantId, setMerchantId] = useState(demoMerchantId);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState('');
-  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [selectedCartItems, setSelectedCartItems] = useState([]);
 
   async function loadSummary(id = merchantId) {
     if (!id) return;
@@ -79,15 +80,30 @@ export default function App() {
               <ChatCheckout
                 merchantId={merchantId}
                 products={summary.products}
-                onProductSelected={(productId) => setSelectedProductIds((ids) => ids.includes(productId) ? ids : [...ids, productId])}
-                onSelectionReset={() => setSelectedProductIds([])}
+                onProductSelected={(item) => setSelectedCartItems((items) => {
+                  const existingItem = items.find((selectedItem) => selectedItem.productId === item.productId);
+                  return existingItem
+                    ? items.map((selectedItem) => selectedItem.productId === item.productId ? { ...selectedItem, quantity: item.quantity } : selectedItem)
+                    : [...items, item];
+                })}
+                onSelectionReset={() => setSelectedCartItems([])}
                 onComplete={() => loadSummary()}
               />
               <CatalogManager products={summary.products} />
             </div>
 
             <div className="mt-6">
-              <PaymentPageBuilder merchantId={merchantId} products={summary.products} selectedProductIds={selectedProductIds} />
+              <PaymentPageBuilder merchantId={merchantId} products={summary.products} selectedCartItems={selectedCartItems} onComplete={() => loadSummary()} />
+              <section className="mt-6 rounded-2xl border border-white/10 bg-[#0d1320] p-5">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Explainable money actions</p>
+                    <h2 className="mt-1 text-xl font-black text-white">Audit Trail</h2>
+                  </div>
+                  <span className="rounded-full bg-[#20e7a8]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#20e7a8]">{summary.auditLogs.length} logged</span>
+                </div>
+                <AuditTrailViewer logs={summary.auditLogs} />
+              </section>
             </div>
           </div>
         )}
