@@ -71,7 +71,7 @@ npm run dev
 
 Open the localhost URL shown by Vite. Enter the printed Merchant ID and click **Simulate Agent**.
 
-###Merchant ID:  6a9acf5dfc801b18bccdb55d
+Merchant ID:  6a9acf5dfc801b18bccdb55d
 
 ## Try The Demo
 
