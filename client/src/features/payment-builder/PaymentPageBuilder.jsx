@@ -6,6 +6,7 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
   const [forceHighValue, setForceHighValue] = useState(false);
   const [showFailure, setShowFailure] = useState(false);
   const [hitlApproved, setHitlApproved] = useState(false);
+  const [hitlRejected, setHitlRejected] = useState(false);
   const [paymentState, setPaymentState] = useState('idle');
   const [paymentError, setPaymentError] = useState('');
 
@@ -25,8 +26,8 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
 
   const strongTotal = forceHighValue ? 250000 : cart.totalAmount;
   const hitlRequired = strongTotal > 200000;
-  const hitlState = hitlRequired && !hitlApproved ? 'PENDING APPROVAL' : 'APPROVED';
-  const humanGateLabel = hitlRequired ? 'PENDING APPROVAL' : 'Not required';
+  const hitlPending = hitlRequired && !hitlApproved && !hitlRejected;
+  const humanGateLabel = hitlPending ? 'PENDING APPROVAL' : hitlRejected ? 'REJECTED' : hitlRequired ? 'APPROVED' : 'Not required';
   const paymentAmount = (strongTotal / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   async function openRazorpayCheckout() {
@@ -86,33 +87,6 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
     }
   }
 
-  const payload = {
-    transaction_id: 'tx_ai_98ds7f89ds',
-    merchant_id: 'merchant_test_xyz',
-    buyer_agent: {
-      agent_id: 'UpsellBot-v2',
-      authorized_principal_id: 'usr_99812739',
-      delegation_token: hitlApproved ? 'jwt_sig_bounded_spending_limit_approved' : 'jwt_sig_bounded_spending_limit_pending'
-    },
-    order_details: {
-      items: cart.items.map((item) => ({
-        sku: item.sku,
-        qty: item.qty,
-        unit_price: Number((item.unitPrice / 100).toFixed(2)),
-        name: item.name
-      })),
-      currency: 'INR',
-      total_amount: Number((strongTotal / 100).toFixed(2))
-    },
-    guardrails: {
-      max_authorized_amount: 2000,
-      allowed_payment_methods: ['UPI', 'CARD'],
-      requires_human_gate_above: 1000,
-      hitl_gate_status: hitlState,
-      risk_score: hitlRequired ? 'medium' : 'low'
-    }
-  };
-
   return (
     <section className="rounded-2xl border border-white/10 bg-[#0d1320] p-5 text-slate-100 shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
       <div className="mb-5 flex items-center justify-between gap-3">
@@ -120,9 +94,9 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Agent Commerce Review</p>
           <h2 className="mt-2 text-[30px] font-black tracking-[-0.05em] text-white">Secure Payment</h2>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full bg-[#0f2b23] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#20e7a8]">
+        <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${hitlPending || hitlRejected ? 'bg-[#2a2313] text-[#f7c96e]' : 'bg-[#0f2b23] text-[#20e7a8]'}`}>
           <CheckCircle2 className="h-4 w-4" />
-          {hitlRequired && !hitlApproved ? 'Awaiting gate' : 'Verified'}
+          {hitlPending ? 'Awaiting gate' : hitlRejected ? 'Payment blocked' : 'Verified'}
         </span>
       </div>
 
@@ -164,8 +138,8 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
           <div className="rounded-2xl border border-white/10 bg-[#101827] p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h3 className="text-lg font-bold text-white">B. Financial & Gating Controls</h3>
-              <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${hitlRequired && !hitlApproved ? 'bg-[#2a2313] text-[#f7c96e]' : 'bg-[#0f2b23] text-[#20e7a8]'}`}>
-                {hitlRequired && !hitlApproved ? 'HITL Gate: Pending Approval' : 'Low Risk'}
+              <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${hitlPending || hitlRejected ? 'bg-[#2a2313] text-[#f7c96e]' : 'bg-[#0f2b23] text-[#20e7a8]'}`}>
+                {hitlPending ? 'HITL GATE: PENDING APPROVAL' : hitlRejected ? 'HITL GATE: REJECTED' : 'Low Risk'}
               </span>
             </div>
 
@@ -188,16 +162,43 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
               </div>
             </div>
 
+            {hitlPending && (
+              <div className="mt-4 rounded-xl border border-[#f7c96e]/35 bg-[#2a2313] p-4">
+                <p className="font-semibold text-[#f7d98f]">Agent requested ₹2,500 (Exceeds ₹2,000 cap). Approve or Reject?</p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => { setHitlApproved(true); setHitlRejected(false); }}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[#20e7a8]/30 bg-[#103125] px-4 py-3 text-sm font-bold text-[#9afad3]"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Approve Spend
+                  </button>
+                  <button
+                    onClick={() => { setHitlRejected(true); setHitlApproved(false); }}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[#f7d8b6]/30 bg-[#3a2116] px-4 py-3 text-sm font-bold text-[#f6c98b]"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    Reject Spend
+                  </button>
+                </div>
+              </div>
+            )}
+            {hitlRejected && (
+              <div className="mt-4 rounded-xl border border-[#f7d8b6]/30 bg-[#3a2116] px-4 py-3 text-sm text-[#f6c98b]">
+                Payment progression is locked because the human reviewer rejected this above-cap request.
+              </div>
+            )}
+
             <div className="mt-4 flex flex-wrap gap-3">
               <button
-                onClick={() => setForceHighValue((current) => !current)}
+                onClick={() => { setForceHighValue((current) => !current); setHitlApproved(false); setHitlRejected(false); }}
                 className="inline-flex items-center gap-2 rounded-xl border border-[#77a7ff]/30 bg-[#1b2943] px-4 py-3 text-sm font-bold text-[#badaff]"
               >
                 {forceHighValue ? 'Reset to Normal Spend' : 'Simulate ₹2,500 Spend'}
               </button>
-              {hitlRequired && !hitlApproved && (
+              {hitlPending && (
                 <button
-                  onClick={() => setHitlApproved(true)}
+                  onClick={() => { setHitlApproved(true); setHitlRejected(false); }}
                   className="inline-flex items-center gap-2 rounded-xl border border-[#20e7a8]/30 bg-[#103125] px-4 py-3 text-sm font-bold text-[#9afad3]"
                 >
                   <ShieldCheck className="h-4 w-4" />
@@ -267,30 +268,13 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
 
           </div>
 
-          <div className="mt-6 rounded-xl border border-white/10 bg-[#101827] p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Audit Trail</h3>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[#0f2b23] px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#20e7a8]">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Logged
-              </span>
-            </div>
-
-            <div className="space-y-3 text-sm text-slate-300">
-              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#20e7a8]" /> Agent evaluated cart</div>
-              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#20e7a8]" /> Budget constraint checked</div>
-              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#20e7a8]" /> Delegation token validated</div>
-              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#20e7a8]" /> Razorpay test API invoked</div>
-            </div>
-          </div>
-
           <div className="mt-6 flex items-center justify-between rounded-xl border border-[#77a7ff]/30 bg-[#101e37] px-4 py-4">
             <div className="flex items-center gap-2 font-bold text-white">
               <CircleDollarSign className="h-5 w-5 text-[#77a7ff]" />
               Pay ₹{paymentAmount}
             </div>
             <button
-              disabled={hitlRequired && !hitlApproved}
+              disabled={hitlPending || hitlRejected}
               onClick={openRazorpayCheckout}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#b7adff] to-[#8da2ff] px-5 py-3 text-sm font-bold text-[#080d17] shadow-[0_8px_22px_rgba(146,164,255,0.35)] disabled:cursor-not-allowed disabled:opacity-50"
             >
