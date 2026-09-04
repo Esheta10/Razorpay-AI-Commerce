@@ -1,8 +1,10 @@
+import { Copy, KeyRound, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { AuditTrailViewer } from './components/AuditTrailViewer.jsx';
+import { Button } from './components/Button.jsx';
 import { ChatCheckout } from './features/chat-checkout/ChatCheckout.jsx';
 import { CatalogManager } from './features/catalog/CatalogManager.jsx';
 import { MerchantDashboard } from './features/dashboard/MerchantDashboard.jsx';
+import { PaymentPageBuilder } from './features/payment-builder/PaymentPageBuilder.jsx';
 import { fetchMerchantSummary } from './services/api.js';
 
 const demoMerchantId = import.meta.env.VITE_DEMO_MERCHANT_ID || '';
@@ -11,6 +13,7 @@ export default function App() {
   const [merchantId, setMerchantId] = useState(demoMerchantId);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState('');
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
 
   async function loadSummary(id = merchantId) {
     if (!id) return;
@@ -28,41 +31,54 @@ export default function App() {
   }, []);
 
   return (
-    <main className="mx-auto min-h-screen max-w-7xl px-4 py-6 md:px-8">
-      <header className="mb-6 border-b border-stone-300 pb-5">
-        <p className="text-sm font-bold uppercase tracking-wide text-saffron">Razorpay AI Buildathon</p>
-        <h1 className="mt-1 text-3xl font-black md:text-5xl">AI Growth & Agentic Commerce</h1>
-        <p className="mt-2 max-w-3xl text-stone-700">
-          Grow merchant revenue with an explainable buyer agent, gated money actions, test-mode payment recovery, and a visual audit trail.
-        </p>
-      </header>
-
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <input
-          className="h-10 min-w-80 rounded-md border border-stone-300 bg-white px-3"
-          placeholder="Seed backend, then paste merchant id"
-          value={merchantId}
-          onChange={(event) => setMerchantId(event.target.value)}
-        />
-        <button className="h-10 rounded-md bg-ink px-4 text-sm font-semibold text-white" onClick={() => loadSummary()}>
-          Load merchant
-        </button>
-        {error && <p className="text-sm text-red-700">{error}</p>}
-      </div>
-
-      {summary && (
-        <div className="space-y-6">
-          <MerchantDashboard summary={summary} />
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <ChatCheckout merchantId={merchantId} products={summary.products} onComplete={() => loadSummary()} />
-            <CatalogManager products={summary.products} />
+    <main className="min-h-screen bg-[#070d18] text-slate-100">
+      <div className="mx-auto max-w-[1280px] px-4 py-7 md:px-6">
+        <header className="mx-auto flex max-w-[1240px] items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#0d1320]/90 px-4 py-3 shadow-[0_18px_45px_rgba(3,7,18,0.45)] backdrop-blur-sm">
+          <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-white/5 bg-[#101827] px-3 py-2">
+            <KeyRound className="h-4 w-4 shrink-0 text-[#7daaef]" />
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">MERCHANT_ID:</span>
+            <input
+              className="w-full min-w-0 border-0 bg-transparent font-mono text-[11px] tracking-[0.08em] text-[#dfe9ff] outline-none placeholder:text-slate-500"
+              placeholder="Paste merchant ID"
+              value={merchantId}
+              onChange={(event) => setMerchantId(event.target.value)}
+            />
           </div>
-          <section>
-            <h2 className="mb-3 text-xl font-bold">Visual audit trail</h2>
-            <AuditTrailViewer logs={summary.auditLogs} />
-          </section>
-        </div>
-      )}
+
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" className="h-10 w-10 rounded-lg px-0" aria-label="Copy merchant id">
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => loadSummary()} className="h-10 rounded-lg px-4">
+              <Play className="h-4 w-4" />
+              Simulate Agent
+            </Button>
+          </div>
+        </header>
+
+        {error && <p className="mx-auto mt-4 max-w-[1240px] rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p>}
+
+        {summary && (
+          <div className="mx-auto mt-8 max-w-[1240px]">
+            <MerchantDashboard summary={summary} />
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_0.7fr]">
+              <ChatCheckout
+                merchantId={merchantId}
+                products={summary.products}
+                onProductSelected={(productId) => setSelectedProductIds((ids) => ids.includes(productId) ? ids : [...ids, productId])}
+                onSelectionReset={() => setSelectedProductIds([])}
+                onComplete={() => loadSummary()}
+              />
+              <CatalogManager products={summary.products} />
+            </div>
+
+            <div className="mt-6">
+              <PaymentPageBuilder merchantId={merchantId} products={summary.products} selectedProductIds={selectedProductIds} />
+            </div>
+          </div>
+        )}
+      </div>
     </main>
   );
 }

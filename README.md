@@ -23,11 +23,12 @@ npx tailwindcss init -p
 
 ```bash
 cd server
-cp .env.example .env
 npm install
 npm run seed
 npm run dev
 ```
+
+Create `server/.env` with your local MongoDB, Gemini, and Razorpay test-mode settings before starting the server. Keep this file private; it is ignored by Git.
 
 Copy the printed `merchantId`, then in another terminal:
 
@@ -41,7 +42,7 @@ npm run dev
 ## Architecture
 
 - `server/models`: `Merchant`, `Product`, `Transaction`, `AuditLog`.
-- `server/services`: buyer agent checkout loop, optional LLM planning, catalog shaping, and financial guardrail evaluation.
-- `server/utils`: audit logging and Razorpay test-mode mock handlers.
+- `server/services`: buyer agent checkout loop, Gemini catalog chat, optional LLM planning, catalog shaping, and financial guardrail evaluation.
+- `server/utils`: audit logging and Razorpay test-mode SDK integration.
 - `client/src/components`: reusable `Button`, `Card`, and `AuditTrailViewer`.
 - `client/src/features`: domain views for checkout, catalog, and merchant dashboard.

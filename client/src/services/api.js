@@ -16,3 +16,18 @@ export async function runAgentCheckout(payload) {
   const { data } = await api.post('/agent/checkout', payload);
   return data;
 }
+
+export async function chatWithCatalogAssistant(payload) {
+  const { data } = await api.post('/agent/chat', payload);
+  return data;
+}
+
+export async function createPaymentOrder(payload) {
+  const { data } = await api.post('/payments/orders', payload);
+  return data;
+}
+
+export async function verifyPayment(payload) {
+  const { data } = await api.post('/payments/verify', payload);
+  return data;
+}

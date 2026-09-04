@@ -1,43 +1,31 @@
-import { nanoid } from 'nanoid';
+import crypto from 'node:crypto';
+import Razorpay from 'razorpay';
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET
+});
 
 export async function createRazorpayTestOrder({ amount, currency, receipt }) {
-  return {
-    id: `order_test_${nanoid(12)}`,
-    entity: 'order',
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    throw new Error('Razorpay credentials are not configured on the server.');
+  }
+
+  return razorpay.orders.create({
     amount,
-    amount_paid: 0,
-    amount_due: amount,
     currency,
     receipt,
-    status: 'created',
-    attempts: 0
-  };
+    payment_capture: 1
+  });
 }
 
-export async function simulatePayment({ orderId, amount, failureMode }) {
-  if (failureMode === 'timeout') {
-    const error = new Error('Gateway timeout while confirming payment.');
-    error.code = 'GATEWAY_TIMEOUT';
-    throw error;
-  }
-
-  if (failureMode === 'decline') {
-    return {
-      ok: false,
-      paymentId: null,
-      orderId,
-      amount,
-      reason: 'card_declined',
-      advice: 'Ask buyer agent to retry with UPI or a different card.'
-    };
-  }
-
-  return {
-    ok: true,
-    paymentId: `pay_test_${nanoid(12)}`,
-    orderId,
-    amount,
-    method: 'upi',
-    captured: true
-  };
+export function verifyRazorpayPaymentSignature({ orderId, paymentId, signature }) {
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${orderId}|${paymentId}`)
+    .digest('hex');
+  const signatureBuffer = Buffer.from(signature || '');
+  const expectedSignatureBuffer = Buffer.from(expectedSignature);
+  return signatureBuffer.length === expectedSignatureBuffer.length
+    && crypto.timingSafeEqual(signatureBuffer, expectedSignatureBuffer);
 }

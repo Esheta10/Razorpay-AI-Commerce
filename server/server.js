@@ -23,7 +23,11 @@ app.use(
     }
   })
 );
-app.use(express.json());
+app.use(express.json({
+  verify(request, _response, buffer) {
+    request.rawBody = buffer.toString('utf8');
+  }
+}));
 app.use(morgan('dev'));
 
 app.get('/health', (_req, res) => {
