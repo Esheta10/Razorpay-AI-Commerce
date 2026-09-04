@@ -244,10 +244,6 @@ export function PaymentPageBuilder({ merchantId, products = [], selectedProductI
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[#0f1729] p-5">
-          <div className="mb-4 rounded-xl border border-[#f8d98f]/30 bg-[#2f2915] px-3 py-3 text-sm text-[#f4d777]">
-            Test Mode is on. Only test payments can be made for this payment page.
-          </div>
-
           <h3 className="mb-5 text-[28px] font-black tracking-[-0.04em] text-white">Payment Details</h3>
 
           <div className="space-y-4">

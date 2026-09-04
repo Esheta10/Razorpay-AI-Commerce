@@ -33,6 +33,19 @@ export default function App() {
   return (
     <main className="min-h-screen bg-[#070d18] text-slate-100">
       <div className="mx-auto max-w-[1280px] px-4 py-7 md:px-6">
+        <section className="mx-auto mb-8 max-w-[900px] text-center">
+          <h1 className="text-5xl font-black leading-[0.98] tracking-[-0.05em] text-[#c8d2e5] drop-shadow-[0_4px_0_#18243d] md:text-7xl">
+            Autonomous Agent
+            <br />
+            Commerce &amp; Connection
+            <br />
+            Recovery Engine
+          </h1>
+          <p className="mx-auto mt-5 max-w-[720px] text-sm leading-6 text-[#8f9db5] md:text-base">
+            Grow trust revenue with explainable buyer agents, gated actions, automated recovery, and deterministic audit trails.
+          </p>
+        </section>
+
         <header className="mx-auto flex max-w-[1240px] items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#0d1320]/90 px-4 py-3 shadow-[0_18px_45px_rgba(3,7,18,0.45)] backdrop-blur-sm">
           <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-white/5 bg-[#101827] px-3 py-2">
             <KeyRound className="h-4 w-4 shrink-0 text-[#7daaef]" />
